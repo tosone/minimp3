@@ -1,8 +1,3 @@
-# minimp3
-
-Decode mp3 base on https://github.com/lieff/minimp3
-
-``` golang
 package main
 
 import (
@@ -13,10 +8,9 @@ import (
 )
 
 func main() {
-	var file, _ = ioutil.ReadFile("test.mp3")
+	var file, _ = ioutil.ReadFile("../test.mp3")
 	dec, data, _ := minimp3.DecodeFull(file)
 
 	player, _ := oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 1024)
 	player.Write(data)
 }
-```
