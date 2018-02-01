@@ -5,17 +5,19 @@ import (
 	"os"
 	"os/signal"
 
+	"fmt"
+
 	"github.com/hajimehoshi/oto"
 	"github.com/tosone/minimp3"
 )
 
 func main() {
-	var file, _ = os.Open("../test.mp3")
+	var file, _ = os.Open("./test.mp3")
 	dec, _ := minimp3.NewDecoder(file)
 	started := dec.Started()
 	<-started
-
-	player, _ := oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 8192)
+	fmt.Println(dec.SampleRate, dec.Channels)
+	player, _ := oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 512)
 	go func() {
 		for {
 			var data = make([]byte, 1024)
