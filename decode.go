@@ -31,9 +31,10 @@ import (
 const maxSamplesPerFrame = 1152 * 2
 
 type Decoder struct {
-	sync.Mutex
+	readerLocker  *sync.Mutex
 	data          []byte
 	readIndex     int
+	decoderLocker *sync.Mutex
 	decodedData   []byte
 	decodeIndex   int
 	decode        C.mp3dec_t
@@ -46,8 +47,12 @@ type Decoder struct {
 	Layer         int
 }
 
+const bufferSize = 1024 * 10
+
 func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 	dec = new(Decoder)
+	dec.readerLocker = new(sync.Mutex)
+	dec.decoderLocker = new(sync.Mutex)
 	dec.context, dec.contextCancel = context.WithCancel(context.Background())
 	dec.decode = C.mp3dec_t{}
 	C.mp3dec_init(&dec.decode)
@@ -59,7 +64,11 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 				break
 			default:
 			}
-			var data = make([]byte, 1024)
+			if len(dec.data) > bufferSize {
+				<-time.After(time.Millisecond * 100)
+				continue
+			}
+			var data = make([]byte, 512)
 			var n int
 			n, err = reader.Read(data)
 			if err == io.EOF {
@@ -68,9 +77,9 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 			if err != nil {
 				return
 			}
-			dec.Lock()
+			dec.readerLocker.Lock()
 			dec.data = append(dec.data, data[:n]...)
-			dec.Unlock()
+			dec.readerLocker.Unlock()
 		}
 	}()
 	go func() {
@@ -80,11 +89,20 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 				break
 			default:
 			}
+			if len(dec.decodedData) > bufferSize {
+				<-time.After(time.Millisecond * 100)
+				continue
+			}
 			var decoded = [maxSamplesPerFrame * 2]byte{}
 			var decodedLength = C.int(0)
 			var length = C.int(len(dec.data))
 			if len(dec.data) == 0 {
 				continue
+			}
+			select {
+			case <-dec.context.Done():
+				break
+			default:
 			}
 			frameSize := C.decode(&dec.decode, &dec.info,
 				(*C.uchar)(unsafe.Pointer(&dec.data[0])),
@@ -99,12 +117,14 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 			dec.Kbps = int(dec.info.bitrate_kbps)
 			dec.Layer = int(dec.info.layer)
 			dec.decodeIndex += int(frameSize)
-			dec.Lock()
+			dec.readerLocker.Lock()
+			dec.decoderLocker.Lock()
 			dec.decodedData = append(dec.decodedData, decoded[:decodedLength*2]...)
 			if int(frameSize) < len(dec.data) {
 				dec.data = dec.data[int(frameSize):]
 			}
-			dec.Unlock()
+			dec.decoderLocker.Unlock()
+			dec.readerLocker.Unlock()
 		}
 	}()
 	return
@@ -130,14 +150,16 @@ func (dec *Decoder) Started() (channel chan bool) {
 }
 
 func (dec *Decoder) Read(data []byte) (n int, err error) {
-	dec.Lock()
-	defer dec.Unlock()
+	dec.decoderLocker.Lock()
+	defer dec.decoderLocker.Unlock()
 	if dec.readIndex > len(dec.decodedData) {
 		err = io.EOF
 		return
 	}
 	n = copy(data, dec.decodedData[dec.readIndex:])
 	dec.readIndex += n
+	dec.decodedData = dec.decodedData[dec.readIndex:]
+	dec.readIndex -= n
 	return
 }
 
