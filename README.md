@@ -1,4 +1,4 @@
-# minimp3 [![Build Status](https://travis-ci.org/tosone/minimp3.svg?branch=master)](https://travis-ci.org/tosone/minimp3) [![Coverage Status](https://coveralls.io/repos/github/tosone/minimp3/badge.svg?branch=master)](https://coveralls.io/github/tosone/minimp3?branch=master)
+# minimp3 [![Build Status](https://travis-ci.org/tosone/minimp3.svg?branch=master)](https://travis-ci.org/tosone/minimp3) [![Coverage Status](https://coveralls.io/repos/github/tosone/minimp3/badge.svg)](https://coveralls.io/github/tosone/minimp3)
 
 Decode mp3 base on https://github.com/lieff/minimp3
 
