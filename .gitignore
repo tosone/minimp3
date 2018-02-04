@@ -16,3 +16,7 @@
 .idea/
 
 *.wav
+
+.DS_Store
+
+coverage.html
