@@ -2,6 +2,8 @@
 
 Decode mp3 base on https://github.com/lieff/minimp3
 
+[![GoDoc](https://godoc.org/github.com/tosone/minimp3?status.svg)](https://godoc.org/github.com/tosone/minimp3)
+
 ``` golang
 package main
 

@@ -30,6 +30,7 @@ import (
 
 const maxSamplesPerFrame = 1152 * 2
 
+// Decoder decode the mp3 stream by minimp3
 type Decoder struct {
 	readerLocker  *sync.Mutex
 	data          []byte
@@ -51,6 +52,7 @@ var BufferSize = 1024 * 10
 // WaitForDataDuration wait for the data time duration.
 var WaitForDataDuration = time.Millisecond * 10
 
+// NewDecoder decode mp3 stream and get a Decoder for read the raw data to play.
 func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 	dec = new(Decoder)
 	dec.readerLocker = new(sync.Mutex)
@@ -128,6 +130,7 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 	return
 }
 
+// Started check the record mp3 stream started ot not.
 func (dec *Decoder) Started() (channel chan bool) {
 	channel = make(chan bool)
 	go func() {
@@ -147,6 +150,7 @@ func (dec *Decoder) Started() (channel chan bool) {
 	return
 }
 
+// Read read the raw stream
 func (dec *Decoder) Read(data []byte) (n int, err error) {
 	dec.decoderLocker.Lock()
 	defer dec.decoderLocker.Unlock()
@@ -159,12 +163,14 @@ func (dec *Decoder) Read(data []byte) (n int, err error) {
 	return
 }
 
+// Close stop the decode mp3 stream cycle.
 func (dec *Decoder) Close() {
 	if dec.contextCancel != nil {
 		dec.contextCancel()
 	}
 }
 
+// DecodeFull put all of the mp3 data to decode.
 func DecodeFull(mp3 []byte) (dec *Decoder, decodedData []byte, err error) {
 	dec = new(Decoder)
 	dec.decode = C.mp3dec_t{}
