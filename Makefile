@@ -9,4 +9,4 @@ coverage: clean
 	go tool cover -html=coverage.out -o coverage.html
 
 clean:
-	-rm *.out *.html
+	-rm *.out *.html *.pcm

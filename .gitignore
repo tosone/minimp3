@@ -20,3 +20,5 @@
 .DS_Store
 
 coverage.html
+
+*.pcm

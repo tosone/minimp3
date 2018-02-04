@@ -8,29 +8,26 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/hajimehoshi/oto"
 )
 
 func TestDecoder(t *testing.T) {
 	var err error
-	var file *os.File
+	var file, pcmFile *os.File
 	var dec *Decoder
-	var player *oto.Player
 
 	if file, err = os.Open("./example/test.mp3"); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	if dec, err = NewDecoder(file); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	started := dec.Started()
 	<-started
 
 	log.Printf("Convert audio sample rate: %d, channels: %d\n", dec.SampleRate, dec.Channels)
 
-	if player, err = oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 1024); err != nil {
-		t.Fatal(err)
+	if pcmFile, err = os.Create("test1.pcm"); err != nil {
+		t.Error(err)
 	}
 
 	var waitForPlayOver = new(sync.WaitGroup)
@@ -46,8 +43,9 @@ func TestDecoder(t *testing.T) {
 			if err != nil {
 				break
 			}
-			if _, err = player.Write(data); err != nil {
-				t.Fatal(err)
+
+			if _, err = pcmFile.Write(data); err != nil {
+				t.Error(err)
 			}
 		}
 		log.Println("over play.")
@@ -57,8 +55,8 @@ func TestDecoder(t *testing.T) {
 
 	<-time.After(time.Second)
 	dec.Close()
-	if err = player.Close(); err != nil {
-		t.Fatal(err)
+	if err = pcmFile.Close(); err != nil {
+		t.Error(err)
 	}
 }
 
@@ -67,28 +65,19 @@ func TestDecodeFull(t *testing.T) {
 
 	var dec *Decoder
 	var data, file []byte
-	var player *oto.Player
 
 	if file, err = ioutil.ReadFile("./example/test.mp3"); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	if dec, data, err = DecodeFull(file); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
-	if player, err = oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 1024); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = player.Write(data); err != nil {
-		t.Fatal(err)
-	}
+	ioutil.WriteFile("test2.pcm", data, 0644)
 
 	<-time.After(time.Second)
 	dec.Close()
-	if err = player.Close(); err != nil {
-		t.Fatal(err)
-	}
 }
 
 func TestDecoder_CloseEarly1(t *testing.T) {
@@ -97,10 +86,10 @@ func TestDecoder_CloseEarly1(t *testing.T) {
 	var dec *Decoder
 
 	if file, err = os.Open("./example/test.mp3"); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	if dec, err = NewDecoder(file); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	dec.Close()
 	started := dec.Started()
@@ -112,15 +101,14 @@ func TestDecoder_CloseEarly1(t *testing.T) {
 
 func TestDecoder_CloseEarly2(t *testing.T) {
 	var err error
-	var file *os.File
+	var file, pcmFile *os.File
 	var dec *Decoder
-	var player *oto.Player
 
 	if file, err = os.Open("./example/test.mp3"); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 	if dec, err = NewDecoder(file); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	started := dec.Started()
@@ -130,8 +118,8 @@ func TestDecoder_CloseEarly2(t *testing.T) {
 
 	log.Printf("Convert audio sample rate: %d, channels: %d\n", dec.SampleRate, dec.Channels)
 
-	if player, err = oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 1024); err != nil {
-		t.Fatal(err)
+	if pcmFile, err = os.Create("test4.pcm"); err != nil {
+		t.Error(err)
 	}
 
 	var waitForPlayOver = new(sync.WaitGroup)
@@ -147,8 +135,8 @@ func TestDecoder_CloseEarly2(t *testing.T) {
 			if err != nil {
 				break
 			}
-			if _, err = player.Write(data); err != nil {
-				t.Fatal(err)
+			if _, err = pcmFile.Write(data); err != nil {
+				t.Error(err)
 			}
 		}
 		log.Println("over play.")
@@ -157,7 +145,8 @@ func TestDecoder_CloseEarly2(t *testing.T) {
 	waitForPlayOver.Wait()
 
 	<-time.After(time.Second)
-	if err = player.Close(); err != nil {
-		t.Fatal(err)
+	dec.Close()
+	if err = pcmFile.Close(); err != nil {
+		t.Error(err)
 	}
 }
