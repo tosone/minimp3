@@ -11,7 +11,7 @@ int decode(mp3dec_t *dec, mp3dec_frame_info_t *info, unsigned char *data, int *l
 	int samples;
     short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];
     samples = mp3dec_decode_frame(dec, data, *length, pcm, info);
-    *decoded_length = samples * info->channels;
+    *decoded_length = samples * info->channels*2;
     *length -= info->frame_bytes;
 	unsigned char buffer[samples*info->channels*2];
 	memcpy(buffer, (unsigned char*)&(pcm), sizeof(short) * samples * info->channels);
@@ -33,10 +33,8 @@ const maxSamplesPerFrame = 1152 * 2
 type Decoder struct {
 	readerLocker  *sync.Mutex
 	data          []byte
-	readIndex     int
 	decoderLocker *sync.Mutex
 	decodedData   []byte
-	decodeIndex   int
 	decode        C.mp3dec_t
 	info          C.mp3dec_frame_info_t
 	context       context.Context
@@ -47,7 +45,11 @@ type Decoder struct {
 	Layer         int
 }
 
-const bufferSize = 1024 * 10
+// BufferSize Decoded data buffer size.
+var BufferSize = 1024 * 10
+
+// WaitForDataDuration wait for the data time duration.
+var WaitForDataDuration = time.Millisecond * 10
 
 func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 	dec = new(Decoder)
@@ -64,22 +66,23 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 				break
 			default:
 			}
-			if len(dec.data) > bufferSize {
-				<-time.After(time.Millisecond * 100)
+			if len(dec.data) > BufferSize {
+				<-time.After(WaitForDataDuration)
 				continue
 			}
 			var data = make([]byte, 512)
 			var n int
 			n, err = reader.Read(data)
-			if err == io.EOF {
-				return
-			}
-			if err != nil {
-				return
-			}
+
 			dec.readerLocker.Lock()
 			dec.data = append(dec.data, data[:n]...)
 			dec.readerLocker.Unlock()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				break
+			}
 		}
 	}()
 	go func() {
@@ -89,37 +92,32 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 				break
 			default:
 			}
-			if len(dec.decodedData) > bufferSize {
-				<-time.After(time.Millisecond * 100)
+			if len(dec.decodedData) > BufferSize {
+				<-time.After(WaitForDataDuration)
 				continue
 			}
 			var decoded = [maxSamplesPerFrame * 2]byte{}
 			var decodedLength = C.int(0)
 			var length = C.int(len(dec.data))
 			if len(dec.data) == 0 {
+				<-time.After(WaitForDataDuration)
 				continue
-			}
-			select {
-			case <-dec.context.Done():
-				break
-			default:
 			}
 			frameSize := C.decode(&dec.decode, &dec.info,
 				(*C.uchar)(unsafe.Pointer(&dec.data[0])),
 				&length, (*C.uchar)(unsafe.Pointer(&decoded[0])),
 				&decodedLength)
 			if int(frameSize) == 0 {
-				<-time.After(time.Millisecond * 100)
+				<-time.After(WaitForDataDuration)
 				continue
 			}
 			dec.SampleRate = int(dec.info.hz)
 			dec.Channels = int(dec.info.channels)
 			dec.Kbps = int(dec.info.bitrate_kbps)
 			dec.Layer = int(dec.info.layer)
-			dec.decodeIndex += int(frameSize)
 			dec.readerLocker.Lock()
 			dec.decoderLocker.Lock()
-			dec.decodedData = append(dec.decodedData, decoded[:decodedLength*2]...)
+			dec.decodedData = append(dec.decodedData, decoded[:decodedLength]...)
 			if int(frameSize) < len(dec.data) {
 				dec.data = dec.data[int(frameSize):]
 			}
@@ -152,14 +150,12 @@ func (dec *Decoder) Started() (channel chan bool) {
 func (dec *Decoder) Read(data []byte) (n int, err error) {
 	dec.decoderLocker.Lock()
 	defer dec.decoderLocker.Unlock()
-	if dec.readIndex > len(dec.decodedData) {
+	if len(dec.decodedData) == 0 {
 		err = io.EOF
 		return
 	}
-	n = copy(data, dec.decodedData[dec.readIndex:])
-	dec.readIndex += n
-	dec.decodedData = dec.decodedData[dec.readIndex:]
-	dec.readIndex -= n
+	n = copy(data, dec.decodedData[:])
+	dec.decodedData = dec.decodedData[n:]
 	return
 }
 
@@ -185,7 +181,7 @@ func DecodeFull(mp3 []byte) (dec *Decoder, decodedData []byte, err error) {
 		if int(frameSize) == 0 {
 			break
 		}
-		decodedData = append(decodedData, decoded[:decodedLength*2]...)
+		decodedData = append(decodedData, decoded[:decodedLength]...)
 		if int(frameSize) < len(mp3) {
 			mp3 = mp3[int(frameSize):]
 		}
