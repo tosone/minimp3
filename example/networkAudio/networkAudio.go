@@ -20,7 +20,7 @@ func main() {
 
 	args := os.Args
 	if len(args) != 2 {
-		log.Fatal("")
+		log.Fatal("./networkAudio.test http://119.90.25.30/ip.h5.ra01.sycdn.kuwo.cn/e3244f78b1b42da5a4e74075b5870cce/5ab8b559/resource/n1/320/62/90/2295644473.mp3")
 	}
 
 	if response, err = http.Get(args[1]); err != nil {
@@ -34,7 +34,7 @@ func main() {
 
 	log.Printf("Convert audio sample rate: %d, channels: %d\n", dec.SampleRate, dec.Channels)
 
-	if player, err = oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 1024); err != nil {
+	if player, err = oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 4096); err != nil {
 		log.Fatal(err)
 	}
 
