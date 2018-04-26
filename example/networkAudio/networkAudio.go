@@ -20,9 +20,8 @@ func main() {
 
 	args := os.Args
 	if len(args) != 2 {
-		log.Fatal("./networkAudio.test http://119.90.25.30/ip.h5.ra01.sycdn.kuwo.cn/e3244f78b1b42da5a4e74075b5870cce/5ab8b559/resource/n1/320/62/90/2295644473.mp3")
+		log.Fatal("Run test like this:\n\n\t./networkAudio.test mp3url\n\n")
 	}
-
 	if response, err = http.Get(args[1]); err != nil {
 		log.Fatal(err)
 	}
