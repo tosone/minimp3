@@ -7,3 +7,6 @@ build:
 
 clean:
 	-rm ${Target}
+
+test:
+	./${Target}
