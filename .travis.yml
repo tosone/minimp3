@@ -1,6 +1,7 @@
 language: go
 go:
-  - '1.10.1'
+  - 1.9.x
+  - 1.10.x
 before_install:
   - sudo apt update
   - sudo apt install libasound2 libasound2-dev
