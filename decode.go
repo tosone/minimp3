@@ -8,14 +8,14 @@ package minimp3
 #include <stdio.h>
 
 int decode(mp3dec_t *dec, mp3dec_frame_info_t *info, unsigned char *data, int *length, unsigned char *decoded, int *decoded_length) {
-	int samples;
+    int samples;
     short pcm[MINIMP3_MAX_SAMPLES_PER_FRAME];
     samples = mp3dec_decode_frame(dec, data, *length, pcm, info);
-    *decoded_length = samples * info->channels*2;
+    *decoded_length = samples * info->channels * 2;
     *length -= info->frame_bytes;
-	unsigned char buffer[samples*info->channels*2];
-	memcpy(buffer, (unsigned char*)&(pcm), sizeof(short) * samples * info->channels);
-	memcpy(decoded, buffer, sizeof(short) * samples * info->channels);
+    unsigned char buffer[samples * info->channels * 2];
+    memcpy(buffer, (unsigned char*)&(pcm), sizeof(short) * samples * info->channels);
+    memcpy(decoded, buffer, sizeof(short) * samples * info->channels);
     return info->frame_bytes;
 }
 */
