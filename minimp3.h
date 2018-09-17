@@ -6,6 +6,7 @@
     This software is distributed without any warranty.
     See <http://creativecommons.org/publicdomain/zero/1.0/>.
 */
+#include <stdint.h>
 
 #define MINIMP3_MAX_SAMPLES_PER_FRAME (1152*2)
 
@@ -23,24 +24,32 @@ typedef struct
 
 #ifdef __cplusplus
 extern "C" {
-#endif
+#endif /* __cplusplus */
 
 void mp3dec_init(mp3dec_t *dec);
-int mp3dec_decode_frame(mp3dec_t *dec, const unsigned char *mp3, int mp3_bytes, short *pcm, mp3dec_frame_info_t *info);
+#ifndef MINIMP3_FLOAT_OUTPUT
+typedef int16_t mp3d_sample_t;
+#else /* MINIMP3_FLOAT_OUTPUT */
+typedef float mp3d_sample_t;
+void mp3dec_f32_to_s16(const float *in, int16_t *out, int num_samples);
+#endif /* MINIMP3_FLOAT_OUTPUT */
+int mp3dec_decode_frame(mp3dec_t *dec, const uint8_t *mp3, int mp3_bytes, mp3d_sample_t *pcm, mp3dec_frame_info_t *info);
 
 #ifdef __cplusplus
 }
-#endif
-#endif /*MINIMP3_H*/
+#endif /* __cplusplus */
 
-#ifdef MINIMP3_IMPLEMENTATION
+#endif /* MINIMP3_H */
+#if defined(MINIMP3_IMPLEMENTATION) && !defined(_MINIMP3_IMPLEMENTATION_GUARD)
+#define _MINIMP3_IMPLEMENTATION_GUARD
 
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
 
 #define MAX_FREE_FORMAT_FRAME_SIZE  2304    /* more than ISO spec's */
+#ifndef MAX_FRAME_SYNC_MATCHES
 #define MAX_FRAME_SYNC_MATCHES      10
+#endif /* MAX_FRAME_SYNC_MATCHES */
 
 #define MAX_L3_FRAME_PAYLOAD_BYTES  MAX_FREE_FORMAT_FRAME_SIZE /* MUST be >= 320000/8/32000*1152 = 1440 */
 
@@ -80,12 +89,12 @@ int mp3dec_decode_frame(mp3dec_t *dec, const unsigned char *mp3, int mp3_bytes, 
 #if !defined(MINIMP3_ONLY_SIMD) && (defined(_M_X64) || defined(_M_ARM64) || defined(__x86_64__) || defined(__aarch64__))
 /* x64 always have SSE2, arm64 always have neon, no need for generic code */
 #define MINIMP3_ONLY_SIMD
-#endif
+#endif /* SIMD checks... */
 
 #if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || ((defined(__i386__) || defined(__x86_64__)) && defined(__SSE2__))
 #if defined(_MSC_VER)
 #include <intrin.h>
-#endif
+#endif /* defined(_MSC_VER) */
 #include <immintrin.h>
 #define HAVE_SSE 1
 #define HAVE_SIMD 1
@@ -102,7 +111,7 @@ int mp3dec_decode_frame(mp3dec_t *dec, const unsigned char *mp3, int mp3_bytes, 
 typedef __m128 f4;
 #if defined(_MSC_VER) || defined(MINIMP3_ONLY_SIMD)
 #define minimp3_cpuid __cpuid
-#else
+#else /* defined(_MSC_VER) || defined(MINIMP3_ONLY_SIMD) */
 static __inline__ __attribute__((always_inline)) void minimp3_cpuid(int CPUInfo[], const int InfoType)
 {
 #if defined(__PIC__)
@@ -112,33 +121,33 @@ static __inline__ __attribute__((always_inline)) void minimp3_cpuid(int CPUInfo[
         "cpuid\n"
         "xchgl %%ebx, %1\n"
         "pop  %%rbx\n"
-#else
+#else /* defined(__x86_64__) */
         "xchgl %%ebx, %1\n"
         "cpuid\n"
         "xchgl %%ebx, %1\n"
-#endif
+#endif /* defined(__x86_64__) */
         : "=a" (CPUInfo[0]), "=r" (CPUInfo[1]), "=c" (CPUInfo[2]), "=d" (CPUInfo[3])
         : "a" (InfoType));
-#else
+#else /* defined(__PIC__) */
     __asm__ __volatile__(
         "cpuid"
         : "=a" (CPUInfo[0]), "=b" (CPUInfo[1]), "=c" (CPUInfo[2]), "=d" (CPUInfo[3])
         : "a" (InfoType));
-#endif
+#endif /* defined(__PIC__)*/
 }
-#endif
+#endif /* defined(_MSC_VER) || defined(MINIMP3_ONLY_SIMD) */
 static int have_simd()
 {
 #ifdef MINIMP3_ONLY_SIMD
     return 1;
-#else
+#else /* MINIMP3_ONLY_SIMD */
     static int g_have_simd;
     int CPUInfo[4];
 #ifdef MINIMP3_TEST
     static int g_counter;
     if (g_counter++ > 100)
         return 0;
-#endif
+#endif /* MINIMP3_TEST */
     if (g_have_simd)
         goto end;
     minimp3_cpuid(CPUInfo, 0);
@@ -150,7 +159,7 @@ static int have_simd()
     }
 end:
     return g_have_simd - 1;
-#endif
+#endif /* MINIMP3_ONLY_SIMD */
 }
 #elif defined(__ARM_NEON) || defined(__aarch64__)
 #include <arm_neon.h>
@@ -170,18 +179,15 @@ static int have_simd()
 {   /* TODO: detect neon for !MINIMP3_ONLY_SIMD */
     return 1;
 }
-#else
+#else /* SIMD checks... */
 #define HAVE_SIMD 0
 #ifdef MINIMP3_ONLY_SIMD
 #error MINIMP3_ONLY_SIMD used, but SSE/NEON not enabled
-#endif
-#endif
-
-#else
-
+#endif /* MINIMP3_ONLY_SIMD */
+#endif /* SIMD checks... */
+#else /* !defined(MINIMP3_NO_SIMD) */
 #define HAVE_SIMD 0
-
-#endif
+#endif /* !defined(MINIMP3_NO_SIMD) */
 
 typedef struct
 {
@@ -459,7 +465,7 @@ static void L12_apply_scf_384(L12_scale_info *sci, const float *scf, float *dst)
         }
     }
 }
-#endif
+#endif /* MINIMP3_ONLY_MP3 */
 
 static int L3_read_side_info(bs_t *bs, L3_gr_info_t *gr, const uint8_t *hdr)
 {
@@ -693,17 +699,19 @@ static void L3_decode_scalefactors(const uint8_t *hdr, uint8_t *ist_pos, bs_t *b
     }
 }
 
+static const float g_pow43[129 + 16] = {
+    0,-1,-2.519842f,-4.326749f,-6.349604f,-8.549880f,-10.902724f,-13.390518f,-16.000000f,-18.720754f,-21.544347f,-24.463781f,-27.473142f,-30.567351f,-33.741992f,-36.993181f,
+    0,1,2.519842f,4.326749f,6.349604f,8.549880f,10.902724f,13.390518f,16.000000f,18.720754f,21.544347f,24.463781f,27.473142f,30.567351f,33.741992f,36.993181f,40.317474f,43.711787f,47.173345f,50.699631f,54.288352f,57.937408f,61.644865f,65.408941f,69.227979f,73.100443f,77.024898f,81.000000f,85.024491f,89.097188f,93.216975f,97.382800f,101.593667f,105.848633f,110.146801f,114.487321f,118.869381f,123.292209f,127.755065f,132.257246f,136.798076f,141.376907f,145.993119f,150.646117f,155.335327f,160.060199f,164.820202f,169.614826f,174.443577f,179.305980f,184.201575f,189.129918f,194.090580f,199.083145f,204.107210f,209.162385f,214.248292f,219.364564f,224.510845f,229.686789f,234.892058f,240.126328f,245.389280f,250.680604f,256.000000f,261.347174f,266.721841f,272.123723f,277.552547f,283.008049f,288.489971f,293.998060f,299.532071f,305.091761f,310.676898f,316.287249f,321.922592f,327.582707f,333.267377f,338.976394f,344.709550f,350.466646f,356.247482f,362.051866f,367.879608f,373.730522f,379.604427f,385.501143f,391.420496f,397.362314f,403.326427f,409.312672f,415.320884f,421.350905f,427.402579f,433.475750f,439.570269f,445.685987f,451.822757f,457.980436f,464.158883f,470.357960f,476.577530f,482.817459f,489.077615f,495.357868f,501.658090f,507.978156f,514.317941f,520.677324f,527.056184f,533.454404f,539.871867f,546.308458f,552.764065f,559.238575f,565.731879f,572.243870f,578.774440f,585.323483f,591.890898f,598.476581f,605.080431f,611.702349f,618.342238f,625.000000f,631.675540f,638.368763f,645.079578f
+};
+
 static float L3_pow_43(int x)
 {
-    static const float g_pow43[129] = {
-        0,1,2.519842f,4.326749f,6.349604f,8.549880f,10.902724f,13.390518f,16.000000f,18.720754f,21.544347f,24.463781f,27.473142f,30.567351f,33.741992f,36.993181f,40.317474f,43.711787f,47.173345f,50.699631f,54.288352f,57.937408f,61.644865f,65.408941f,69.227979f,73.100443f,77.024898f,81.000000f,85.024491f,89.097188f,93.216975f,97.382800f,101.593667f,105.848633f,110.146801f,114.487321f,118.869381f,123.292209f,127.755065f,132.257246f,136.798076f,141.376907f,145.993119f,150.646117f,155.335327f,160.060199f,164.820202f,169.614826f,174.443577f,179.305980f,184.201575f,189.129918f,194.090580f,199.083145f,204.107210f,209.162385f,214.248292f,219.364564f,224.510845f,229.686789f,234.892058f,240.126328f,245.389280f,250.680604f,256.000000f,261.347174f,266.721841f,272.123723f,277.552547f,283.008049f,288.489971f,293.998060f,299.532071f,305.091761f,310.676898f,316.287249f,321.922592f,327.582707f,333.267377f,338.976394f,344.709550f,350.466646f,356.247482f,362.051866f,367.879608f,373.730522f,379.604427f,385.501143f,391.420496f,397.362314f,403.326427f,409.312672f,415.320884f,421.350905f,427.402579f,433.475750f,439.570269f,445.685987f,451.822757f,457.980436f,464.158883f,470.357960f,476.577530f,482.817459f,489.077615f,495.357868f,501.658090f,507.978156f,514.317941f,520.677324f,527.056184f,533.454404f,539.871867f,546.308458f,552.764065f,559.238575f,565.731879f,572.243870f,578.774440f,585.323483f,591.890898f,598.476581f,605.080431f,611.702349f,618.342238f,625.000000f,631.675540f,638.368763f,645.079578f
-    };
     float frac;
     int sign, mult = 256;
 
     if (x < 129)
     {
-        return g_pow43[x];
+        return g_pow43[16 + x];
     }
 
     if (x < 1024)
@@ -714,12 +722,11 @@ static float L3_pow_43(int x)
 
     sign = 2*x & 64;
     frac = (float)((x & 63) - sign) / ((x & ~63) + sign);
-    return g_pow43[(x + sign) >> 6]*(1.f + frac*((4.f/3) + frac*(2.f/9)))*mult;
+    return g_pow43[16 + ((x + sign) >> 6)]*(1.f + frac*((4.f/3) + frac*(2.f/9)))*mult;
 }
 
 static void L3_huffman(float *dst, bs_t *bs, const L3_gr_info_t *gr_info, const float *scf, int layer3gr_limit)
 {
-    static const float g_pow43_signed[32] = { 0,0,1,-1,2.519842f,-2.519842f,4.326749f,-4.326749f,6.349604f,-6.349604f,8.549880f,-8.549880f,10.902724f,-10.902724f,13.390518f,-13.390518f,16.000000f,-16.000000f,18.720754f,-18.720754f,21.544347f,-21.544347f,24.463781f,-24.463781f,27.473142f,-27.473142f,30.567351f,-30.567351f,33.741992f,-33.741992f,36.993181f,-36.993181f };
     static const int16_t tabs[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         785,785,785,785,784,784,784,784,513,513,513,513,513,513,513,513,256,256,256,256,256,256,256,256,256,256,256,256,256,256,256,256,
         -255,1313,1298,1282,785,785,785,785,784,784,784,784,769,769,769,769,256,256,256,256,256,256,256,256,256,256,256,256,256,256,256,256,290,288,
@@ -758,7 +765,7 @@ static void L3_huffman(float *dst, bs_t *bs, const L3_gr_info_t *gr_info, const 
     {
         int tab_num = gr_info->table_select[ireg];
         int sfb_cnt = gr_info->region_count[ireg++];
-        const short *codebook = tabs + tabindex[tab_num];
+        const int16_t *codebook = tabs + tabindex[tab_num];
         int linbits = g_linbits[tab_num];
         do
         {
@@ -788,7 +795,7 @@ static void L3_huffman(float *dst, bs_t *bs, const L3_gr_info_t *gr_info, const 
                         *dst = one*L3_pow_43(lsb)*((int32_t)bs_cache < 0 ? -1: 1);
                     } else
                     {
-                        *dst = g_pow43_signed[lsb*2 + (bs_cache >> 31)]*one;
+                        *dst = g_pow43[16 + lsb - 16*(bs_cache >> 31)]*one;
                     }
                     FLUSH_BITS(lsb ? 1 : 0);
                 }
@@ -836,7 +843,7 @@ static void L3_midside_stereo(float *left, int n)
         VSTORE(left + i, VADD(vl, vr));
         VSTORE(right + i, VSUB(vl, vr));
     }
-#endif
+#endif /* HAVE_SIMD */
     for (; i < n; i++)
     {
         float a = left[i];
@@ -969,7 +976,7 @@ static void L3_antialias(float *grbuf, int nbands)
             vd = VADD(VMUL(vu, vc1), VMUL(vd, vc0));
             VSTORE(grbuf + 14 - i, VREV(vd));
         }
-#endif
+#endif /* HAVE_SIMD */
 #ifndef MINIMP3_ONLY_SIMD
         for(; i < 8; i++)
         {
@@ -978,7 +985,7 @@ static void L3_antialias(float *grbuf, int nbands)
             grbuf[18 + i] = u*g_aa[0][i] - d*g_aa[1][i];
             grbuf[17 - i] = u*g_aa[1][i] + d*g_aa[0][i];
         }
-#endif
+#endif /* MINIMP3_ONLY_SIMD */
     }
 }
 
@@ -1067,7 +1074,7 @@ static void L3_imdct36(float *grbuf, float *overlap, const float *window, int nb
             vsum = VADD(VMUL(vovl, vw1), VMUL(vsum, vw0));
             VSTORE(grbuf + 14 - i, VREV(vsum));
         }
-#endif
+#endif /* HAVE_SIMD */
         for (; i < 9; i++)
         {
             float ovl  = overlap[i];
@@ -1267,9 +1274,9 @@ static void mp3d_DCT_II(float *grbuf, int n)
         {
 #if HAVE_SSE
 #define VSAVE2(i, v) _mm_storel_pi((__m64 *)(void*)&y[i*18], v)
-#else
+#else /* HAVE_SSE */
 #define VSAVE2(i, v) vst1_f32((float32_t *)&y[i*18],  vget_low_f32(v))
-#endif
+#endif /* HAVE_SSE */
             for (i = 0; i < 7; i++, y += 4*18)
             {
                 f4 s = VADD(t[3][i], t[3][i + 1]);
@@ -1299,10 +1306,10 @@ static void mp3d_DCT_II(float *grbuf, int n)
             VSAVE4(3, t[3][7]);
         }
     } else
-#endif
+#endif /* HAVE_SIMD */
 #ifdef MINIMP3_ONLY_SIMD
     {}
-#else
+#else /* MINIMP3_ONLY_SIMD */
     for (; k < n; k++)
     {
         float t[4][8], *x, *y = grbuf + k;
@@ -1361,21 +1368,26 @@ static void mp3d_DCT_II(float *grbuf, int n)
         y[2*18] = t[1][7];
         y[3*18] = t[3][7];
     }
-#endif
+#endif /* MINIMP3_ONLY_SIMD */
 }
 
-static short mp3d_scale_pcm(float sample)
+#ifndef MINIMP3_FLOAT_OUTPUT
+static int16_t mp3d_scale_pcm(float sample)
 {
-    if (sample >  32767.0) return (short) 32767;
-    if (sample < -32768.0) return (short)-32768;
-    int s = (int)(sample + .5f);
+    if (sample >=  32766.5) return (int16_t) 32767;
+    if (sample <= -32767.5) return (int16_t)-32768;
+    int16_t s = (int16_t)(sample + .5f);
     s -= (s < 0);   /* away from zero, to be compliant */
-    if (s >  32767) return (short) 32767;
-    if (s < -32768) return (short)-32768;
-    return (short)s;
+    return s;
 }
+#else /* MINIMP3_FLOAT_OUTPUT */
+static float mp3d_scale_pcm(float sample)
+{
+    return sample*(1.f/32768.f);
+}
+#endif /* MINIMP3_FLOAT_OUTPUT */
 
-static void mp3d_synth_pair(short *pcm, int nch, const float *z)
+static void mp3d_synth_pair(mp3d_sample_t *pcm, int nch, const float *z)
 {
     float a;
     a  = (z[14*64] - z[    0]) * 29;
@@ -1400,11 +1412,11 @@ static void mp3d_synth_pair(short *pcm, int nch, const float *z)
     pcm[16*nch] = mp3d_scale_pcm(a);
 }
 
-static void mp3d_synth(float *xl, short *dstl, int nch, float *lins)
+static void mp3d_synth(float *xl, mp3d_sample_t *dstl, int nch, float *lins)
 {
     int i;
     float *xr = xl + 576*(nch - 1);
-    short *dstr = dstl + (nch - 1);
+    mp3d_sample_t *dstr = dstl + (nch - 1);
 
     static const float g_win[] = {
         -1,26,-31,208,218,401,-519,2063,2000,4788,-5517,7134,5959,35640,-39336,74992,
@@ -1461,6 +1473,7 @@ static void mp3d_synth(float *xl, short *dstl, int nch, float *lins)
         V0(0) V2(1) V1(2) V2(3) V1(4) V2(5) V1(6) V2(7)
 
         {
+#ifndef MINIMP3_FLOAT_OUTPUT
 #if HAVE_SSE
             static const f4 g_max = { 32767.0f, 32767.0f, 32767.0f, 32767.0f };
             static const f4 g_min = { -32768.0f, -32768.0f, -32768.0f, -32768.0f };
@@ -1474,7 +1487,7 @@ static void mp3d_synth(float *xl, short *dstl, int nch, float *lins)
             dstr[(49 + i)*nch] = _mm_extract_epi16(pcm8, 7);
             dstl[(47 - i)*nch] = _mm_extract_epi16(pcm8, 2);
             dstl[(49 + i)*nch] = _mm_extract_epi16(pcm8, 6);
-#else
+#else /* HAVE_SSE */
             int16x4_t pcma, pcmb;
             a = VADD(a, VSET(0.5f));
             b = VADD(b, VSET(0.5f));
@@ -1488,13 +1501,39 @@ static void mp3d_synth(float *xl, short *dstl, int nch, float *lins)
             vst1_lane_s16(dstr + (49 + i)*nch, pcmb, 3);
             vst1_lane_s16(dstl + (47 - i)*nch, pcma, 2);
             vst1_lane_s16(dstl + (49 + i)*nch, pcmb, 2);
-#endif
+#endif /* HAVE_SSE */
+
+#else /* MINIMP3_FLOAT_OUTPUT */
+
+            static const f4 g_scale = { 1.0f/32768.0f, 1.0f/32768.0f, 1.0f/32768.0f, 1.0f/32768.0f };
+            a = VMUL(a, g_scale);
+            b = VMUL(b, g_scale);
+#if HAVE_SSE
+            _mm_store_ss(dstr + (15 - i)*nch, _mm_shuffle_ps(a, a, _MM_SHUFFLE(1, 1, 1, 1)));
+            _mm_store_ss(dstr + (17 + i)*nch, _mm_shuffle_ps(b, b, _MM_SHUFFLE(1, 1, 1, 1)));
+            _mm_store_ss(dstl + (15 - i)*nch, _mm_shuffle_ps(a, a, _MM_SHUFFLE(0, 0, 0, 0)));
+            _mm_store_ss(dstl + (17 + i)*nch, _mm_shuffle_ps(b, b, _MM_SHUFFLE(0, 0, 0, 0)));
+            _mm_store_ss(dstr + (47 - i)*nch, _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 3, 3, 3)));
+            _mm_store_ss(dstr + (49 + i)*nch, _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 3, 3, 3)));
+            _mm_store_ss(dstl + (47 - i)*nch, _mm_shuffle_ps(a, a, _MM_SHUFFLE(2, 2, 2, 2)));
+            _mm_store_ss(dstl + (49 + i)*nch, _mm_shuffle_ps(b, b, _MM_SHUFFLE(2, 2, 2, 2)));
+#else /* HAVE_SSE */
+            vst1q_lane_f32(dstr + (15 - i)*nch, a, 1);
+            vst1q_lane_f32(dstr + (17 + i)*nch, b, 1);
+            vst1q_lane_f32(dstl + (15 - i)*nch, a, 0);
+            vst1q_lane_f32(dstl + (17 + i)*nch, b, 0);
+            vst1q_lane_f32(dstr + (47 - i)*nch, a, 3);
+            vst1q_lane_f32(dstr + (49 + i)*nch, b, 3);
+            vst1q_lane_f32(dstl + (47 - i)*nch, a, 2);
+            vst1q_lane_f32(dstl + (49 + i)*nch, b, 2);
+#endif /* HAVE_SSE */
+#endif /* MINIMP3_FLOAT_OUTPUT */
         }
     } else
-#endif
+#endif /* HAVE_SIMD */
 #ifdef MINIMP3_ONLY_SIMD
     {}
-#else
+#else /* MINIMP3_ONLY_SIMD */
     for (i = 14; i >= 0; i--)
     {
 #define LOAD(k) float w0 = *w++; float w1 = *w++; float *vz = &zlin[4*i - k*64]; float *vy = &zlin[4*i - (15 - k)*64];
@@ -1523,10 +1562,10 @@ static void mp3d_synth(float *xl, short *dstl, int nch, float *lins)
         dstl[(47 - i)*nch] = mp3d_scale_pcm(a[2]);
         dstl[(49 + i)*nch] = mp3d_scale_pcm(b[2]);
     }
-#endif
+#endif /* MINIMP3_ONLY_SIMD */
 }
 
-static void mp3d_synth_granule(float *qmf_state, float *grbuf, int nbands, int nch, short *pcm, float *lins)
+static void mp3d_synth_granule(float *qmf_state, float *grbuf, int nbands, int nch, mp3d_sample_t *pcm, float *lins)
 {
     int i;
     for (i = 0; i < nch; i++)
@@ -1548,7 +1587,7 @@ static void mp3d_synth_granule(float *qmf_state, float *grbuf, int nbands, int n
             qmf_state[i] = lins[nbands*64 + i];
         }
     } else
-#endif
+#endif /* MINIMP3_NONSTANDARD_BUT_LOGICAL */
     {
         memcpy(qmf_state, lins + nbands*64, sizeof(float)*15*64);
     }
@@ -1610,7 +1649,7 @@ void mp3dec_init(mp3dec_t *dec)
     dec->header[0] = 0;
 }
 
-int mp3dec_decode_frame(mp3dec_t *dec, const uint8_t *mp3, int mp3_bytes, short *pcm, mp3dec_frame_info_t *info)
+int mp3dec_decode_frame(mp3dec_t *dec, const uint8_t *mp3, int mp3_bytes, mp3d_sample_t *pcm, mp3dec_frame_info_t *info)
 {
     int i = 0, igr, frame_size = 0, success = 1;
     const uint8_t *hdr;
@@ -1644,6 +1683,11 @@ int mp3dec_decode_frame(mp3dec_t *dec, const uint8_t *mp3, int mp3_bytes, short 
     info->layer = 4 - HDR_GET_LAYER(hdr);
     info->bitrate_kbps = hdr_bitrate_kbps(hdr);
 
+    if (!pcm)
+    {
+        return hdr_frame_samples(hdr);
+    }
+
     bs_init(bs_frame, hdr + HDR_SIZE, frame_size - HDR_SIZE);
     if (HDR_IS_CRC(hdr))
     {
@@ -1673,7 +1717,7 @@ int mp3dec_decode_frame(mp3dec_t *dec, const uint8_t *mp3, int mp3_bytes, short 
     {
 #ifdef MINIMP3_ONLY_MP3
         return 0;
-#else
+#else /* MINIMP3_ONLY_MP3 */
         L12_scale_info sci[1];
         L12_read_scale_info(hdr, bs_frame, sci);
 
@@ -1694,8 +1738,70 @@ int mp3dec_decode_frame(mp3dec_t *dec, const uint8_t *mp3, int mp3_bytes, short 
                 return 0;
             }
         }
-#endif
+#endif /* MINIMP3_ONLY_MP3 */
     }
     return success*hdr_frame_samples(dec->header);
 }
-#endif /*MINIMP3_IMPLEMENTATION*/
+
+#ifdef MINIMP3_FLOAT_OUTPUT
+void mp3dec_f32_to_s16(const float *in, int16_t *out, int num_samples)
+{
+    if(num_samples > 0)
+    {
+        int i = 0;
+#if HAVE_SIMD
+        int aligned_count = num_samples & ~7;
+
+        for(;i < aligned_count;i+=8)
+        {
+            static const f4 g_scale = { 32768.0f, 32768.0f, 32768.0f, 32768.0f };
+            f4 a = VMUL(VLD(&in[i  ]), g_scale);
+            f4 b = VMUL(VLD(&in[i+4]), g_scale);
+#if HAVE_SSE
+            static const f4 g_max = { 32767.0f, 32767.0f, 32767.0f, 32767.0f };
+            static const f4 g_min = { -32768.0f, -32768.0f, -32768.0f, -32768.0f };
+            __m128i pcm8 = _mm_packs_epi32(_mm_cvtps_epi32(_mm_max_ps(_mm_min_ps(a, g_max), g_min)),
+                                           _mm_cvtps_epi32(_mm_max_ps(_mm_min_ps(b, g_max), g_min)));
+            out[i  ] = _mm_extract_epi16(pcm8, 0);
+            out[i+1] = _mm_extract_epi16(pcm8, 1);
+            out[i+2] = _mm_extract_epi16(pcm8, 2);
+            out[i+3] = _mm_extract_epi16(pcm8, 3);
+            out[i+4] = _mm_extract_epi16(pcm8, 4);
+            out[i+5] = _mm_extract_epi16(pcm8, 5);
+            out[i+6] = _mm_extract_epi16(pcm8, 6);
+            out[i+7] = _mm_extract_epi16(pcm8, 7);
+#else /* HAVE_SSE */
+            int16x4_t pcma, pcmb;
+            a = VADD(a, VSET(0.5f));
+            b = VADD(b, VSET(0.5f));
+            pcma = vqmovn_s32(vqaddq_s32(vcvtq_s32_f32(a), vreinterpretq_s32_u32(vcltq_f32(a, VSET(0)))));
+            pcmb = vqmovn_s32(vqaddq_s32(vcvtq_s32_f32(b), vreinterpretq_s32_u32(vcltq_f32(b, VSET(0)))));
+            vst1_lane_s16(out+i  , pcma, 0);
+            vst1_lane_s16(out+i+1, pcma, 1);
+            vst1_lane_s16(out+i+2, pcma, 2);
+            vst1_lane_s16(out+i+3, pcma, 3);
+            vst1_lane_s16(out+i+4, pcmb, 0);
+            vst1_lane_s16(out+i+5, pcmb, 1);
+            vst1_lane_s16(out+i+6, pcmb, 2);
+            vst1_lane_s16(out+i+7, pcmb, 3);
+#endif /* HAVE_SSE */
+        }
+#endif /* HAVE_SIMD */
+        for(; i < num_samples; i++)
+        {
+            float sample = in[i] * 32768.0f;
+            if (sample >=  32766.5)
+                out[i] = (int16_t) 32767;
+            else if (sample <= -32767.5)
+                out[i] = (int16_t)-32768;
+            else
+            {
+                int16_t s = (int16_t)(sample + .5f);
+                s -= (s < 0);   /* away from zero, to be compliant */
+                out[i] = s;
+            }
+        }
+    }
+}
+#endif /* MINIMP3_FLOAT_OUTPUT */
+#endif /* MINIMP3_IMPLEMENTATION && !_MINIMP3_IMPLEMENTATION_GUARD */
