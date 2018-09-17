@@ -3,7 +3,7 @@ Target = $(shell basename $(abspath $(dir $$PWD))).test
 all: clean build
 
 build:
-	CGO_ENABLED=1 go build -v -o $(Target) -ldflags "-s -w"
+	GO111MODULE=off CGO_ENABLED=1 go build -v -o $(Target) -ldflags "-s -w"
 
 clean:
 	$(RM) $(Target)
