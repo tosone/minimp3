@@ -20,7 +20,7 @@ func main() {
 
 	args := os.Args
 	if len(args) != 2 {
-		log.Fatal("Run test like this:\n\n\t./networkAudio.test mp3url\n\n")
+		log.Fatal("Run test like this:\n\n\t./networkAudio.test [mp3url]\n\n")
 	}
 	if response, err = http.Get(args[1]); err != nil {
 		log.Fatal(err)
