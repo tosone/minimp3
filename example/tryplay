@@ -1,0 +1,32 @@
+package main
+
+import (
+	"io/ioutil"
+
+	"github.com/hajimehoshi/oto"
+	"github.com/tosone/minimp3"
+
+	"fmt"
+	// "time"
+
+	"sync"
+)
+
+func player(wg *sync.WaitGroup) {
+	defer wg.Done()
+	var file, _ = ioutil.ReadFile("test.mp3")
+	dec, data, _ := minimp3.DecodeFull(file)
+
+	player, _ := oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 1024)
+	player.Write(data)
+}
+
+var wg sync.WaitGroup
+
+func main() {
+	wg.Add(1)
+	go player(&wg)
+
+	wg.Wait() // 等待
+	fmt.Println("main exist")
+}
