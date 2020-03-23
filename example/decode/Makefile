@@ -1,12 +1,12 @@
-Target = $(shell basename $(abspath $(dir $$PWD))).test
+TARGET = $(shell basename $(abspath $(dir $$PWD))).test
 
 all: clean build
 
 build:
-	GO111MODULE=off CGO_ENABLED=1 go build -v -o $(Target) -ldflags "-s -w"
+	env GO111MODULE=off CGO_ENABLED=1 go build -v -o $(TARGET) -ldflags "-s -w"
 
 clean:
-	$(RM) $(Target)
+	$(RM) $(TARGET)
 
 test:
-	./$(Target)
+	./$(TARGET)
