@@ -13,13 +13,13 @@ import (
 
 func main() {
 	var err error
-	var file *os.File
-	var dec *minimp3.Decoder
-	var player *oto.Player
 
+	var file *os.File
 	if file, err = os.Open("../test.mp3"); err != nil {
 		log.Fatal(err)
 	}
+
+	var dec *minimp3.Decoder
 	if dec, err = minimp3.NewDecoder(file); err != nil {
 		log.Fatal(err)
 	}
@@ -28,12 +28,15 @@ func main() {
 
 	log.Printf("Convert audio sample rate: %d, channels: %d\n", dec.SampleRate, dec.Channels)
 
-	if player, err = oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 1024); err != nil {
+	var context *oto.Context
+	if context, err = oto.NewContext(dec.SampleRate, dec.Channels, 2, 1024); err != nil {
 		log.Fatal(err)
 	}
 
 	var waitForPlayOver = new(sync.WaitGroup)
 	waitForPlayOver.Add(1)
+
+	var player = context.NewPlayer()
 
 	go func() {
 		for {
@@ -54,5 +57,7 @@ func main() {
 
 	<-time.After(time.Second)
 	dec.Close()
-	player.Close()
+	if err = player.Close(); err != nil {
+		log.Fatal(err)
+	}
 }

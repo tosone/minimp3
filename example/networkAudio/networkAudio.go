@@ -14,18 +14,18 @@ import (
 
 func main() {
 	var err error
-	var response *http.Response
-	var dec *minimp3.Decoder
-	var player *oto.Player
 
-	args := os.Args
+	var args = os.Args
 	if len(args) != 2 {
 		log.Fatal("Run test like this:\n\n\t./networkAudio.test [mp3url]\n\n")
 	}
+
+	var response *http.Response
 	if response, err = http.Get(args[1]); err != nil {
 		log.Fatal(err)
 	}
 
+	var dec *minimp3.Decoder
 	if dec, err = minimp3.NewDecoder(response.Body); err != nil {
 		log.Fatal(err)
 	}
@@ -33,12 +33,15 @@ func main() {
 
 	log.Printf("Convert audio sample rate: %d, channels: %d\n", dec.SampleRate, dec.Channels)
 
-	if player, err = oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 4096); err != nil {
+	var context *oto.Context
+	if context, err = oto.NewContext(dec.SampleRate, dec.Channels, 2, 4096); err != nil {
 		log.Fatal(err)
 	}
 
 	var waitForPlayOver = new(sync.WaitGroup)
 	waitForPlayOver.Add(1)
+
+	var player = context.NewPlayer()
 
 	go func() {
 		defer response.Body.Close()

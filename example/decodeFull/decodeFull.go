@@ -12,24 +12,29 @@ import (
 func main() {
 	var err error
 
-	var dec *minimp3.Decoder
-	var data, file []byte
-	var player *oto.Player
-
+	var file []byte
 	if file, err = ioutil.ReadFile("../test.mp3"); err != nil {
 		log.Fatal(err)
 	}
 
+	var dec *minimp3.Decoder
+	var data []byte
 	if dec, data, err = minimp3.DecodeFull(file); err != nil {
 		log.Fatal(err)
 	}
 
-	if player, err = oto.NewPlayer(dec.SampleRate, dec.Channels, 2, 1024); err != nil {
+	var context *oto.Context
+	if context, err = oto.NewContext(dec.SampleRate, dec.Channels, 2, 1024); err != nil {
 		log.Fatal(err)
 	}
+
+	var player = context.NewPlayer()
 	player.Write(data)
 
 	<-time.After(time.Second)
+
 	dec.Close()
-	player.Close()
+	if err = player.Close(); err != nil {
+		log.Fatal(err)
+	}
 }
