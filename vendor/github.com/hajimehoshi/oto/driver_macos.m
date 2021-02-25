@@ -27,17 +27,17 @@
 }
 
 - (void)receiveSleepNote:(NSNotification *)note {
-  oto_setGlobalPause(YES);
+  oto_setGlobalPause();
 }
 
 - (void)receiveWakeNote:(NSNotification *)note {
-  oto_setGlobalPause(NO);
+  oto_setGlobalResume();
 }
 
 @end
 
 // oto_setNotificationHandler sets a handler for sleep/wake notifications.
-void oto_setNotificationHandler(AudioQueueRef audioQueue) {
+void oto_setNotificationHandler() {
   OtoNotificationObserver *observer = [[OtoNotificationObserver alloc] init];
 
   [[[NSWorkspace sharedWorkspace] notificationCenter]
@@ -50,4 +50,9 @@ void oto_setNotificationHandler(AudioQueueRef audioQueue) {
          selector:@selector(receiveWakeNote:)
              name:NSWorkspaceDidWakeNotification
            object:NULL];
+}
+
+bool oto_isBackground(void) {
+  // TODO: Should this be implemented?
+  return false;
 }

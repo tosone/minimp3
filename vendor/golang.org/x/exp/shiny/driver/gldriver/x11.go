@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build (linux && !android) || openbsd
 // +build linux,!android openbsd
 
 package gldriver
@@ -194,8 +195,8 @@ func onExpose(id uintptr) {
 
 //export onKeysym
 func onKeysym(k, unshifted, shifted uint32) {
-	theKeysyms[k][0] = unshifted
-	theKeysyms[k][1] = shifted
+	theKeysyms.Table[k][0] = unshifted
+	theKeysyms.Table[k][1] = shifted
 }
 
 //export onKey

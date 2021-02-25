@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build linux darwin windows openbsd
+//go:build (darwin || linux || openbsd || windows) && gldebug
+// +build darwin linux openbsd windows
 // +build gldebug
 
 package gl

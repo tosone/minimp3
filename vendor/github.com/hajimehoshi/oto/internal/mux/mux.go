@@ -71,7 +71,9 @@ func (m *Mux) Read(buf []byte) (int, error) {
 			}
 			return n, nil
 		case 2:
-			copy(buf, make([]byte, n))
+			for i := 0; i < n; i++ {
+				buf[i] = 0
+			}
 			return n, nil
 		default:
 			panic("not reached")
@@ -82,7 +84,7 @@ func (m *Mux) Read(buf []byte) (int, error) {
 	l := len(buf)
 	l = l / bs * bs // Adjust the length in order not to mix different channels.
 
-	bufs := map[*bufio.Reader][]byte{}
+	var bufs [][]byte
 	for _, p := range m.readers {
 		peeked, err := p.Peek(l)
 		if err != nil && err != bufio.ErrBufferFull && err != io.EOF {
@@ -92,7 +94,7 @@ func (m *Mux) Read(buf []byte) (int, error) {
 			l = len(peeked)
 			l = l / bs * bs
 		}
-		bufs[p] = peeked[:l]
+		bufs = append(bufs, peeked[:l])
 	}
 
 	if l == 0 {

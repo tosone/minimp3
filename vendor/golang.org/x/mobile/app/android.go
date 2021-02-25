@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build android
 // +build android
 
 /*
@@ -35,8 +36,9 @@ package app
 #include <pthread.h>
 #include <stdlib.h>
 
-EGLDisplay display;
-EGLSurface surface;
+extern EGLDisplay display;
+extern EGLSurface surface;
+
 
 char* createEGLSurface(ANativeWindow* window);
 char* destroyEGLSurface();
@@ -436,9 +438,9 @@ func processKey(env *C.JNIEnv, e *C.AInputEvent) {
 		Code: convAndroidKeyCode(int32(C.AKeyEvent_getKeyCode(e))),
 	}
 	switch C.AKeyEvent_getAction(e) {
-	case C.AKEY_STATE_DOWN:
+	case C.AKEY_EVENT_ACTION_DOWN:
 		k.Direction = key.DirPress
-	case C.AKEY_STATE_UP:
+	case C.AKEY_EVENT_ACTION_UP:
 		k.Direction = key.DirRelease
 	default:
 		k.Direction = key.DirNone

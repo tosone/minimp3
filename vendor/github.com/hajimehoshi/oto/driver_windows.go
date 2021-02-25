@@ -126,7 +126,7 @@ func (p *driver) TryWrite(data []byte) (int, error) {
 		return 0, err
 	}
 
-	p.tmp = nil
+	p.tmp = p.tmp[:0]
 	return n, nil
 }
 
@@ -137,4 +137,8 @@ func (p *driver) Close() error {
 		return err
 	}
 	return nil
+}
+
+func (d *driver) tryWriteCanReturnWithoutWaiting() bool {
+	return true
 }

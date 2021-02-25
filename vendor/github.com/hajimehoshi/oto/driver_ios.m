@@ -16,21 +16,21 @@
 
 #import <AVFoundation/AVFoundation.h>
 #import <AudioToolbox/AudioToolbox.h>
+#import <UIKit/UIKit.h>
 
 #include "_cgo_export.h"
 
-@interface OtoInterruptObserver : NSObject {
+@interface OtoNotificationObserver : NSObject {
 }
 
-- (void) onAudioSessionEvent: (NSNotification*)notification;
+- (void)onAudioSessionInterruption:(NSNotification *)notification;
 
 @end
 
-@implementation OtoInterruptObserver {
+@implementation OtoNotificationObserver {
 }
 
-- (void) onAudioSessionEvent: (NSNotification *)notification
-{
+- (void)onAudioSessionInterruption:(NSNotification *)notification {
   if (![notification.name isEqualToString:AVAudioSessionInterruptionNotification]) {
     return;
   }
@@ -39,11 +39,14 @@
   AVAudioSessionInterruptionType interruptionType = [(NSNumber*)value intValue];
   switch (interruptionType) {
   case AVAudioSessionInterruptionTypeBegan: {
-    oto_setGlobalPause(YES);
+    oto_setGlobalPause();
     break;
   }
   case AVAudioSessionInterruptionTypeEnded: {
-    oto_setGlobalPause(NO);
+    // AVAudioSessionInterruptionTypeBegan and Ended might not be paired when
+    // Siri is used. Then, incrementing and decrementing a counter with this
+    // notification doesn't work.
+    oto_setGlobalResume();
     break;
   }
   default:
@@ -57,11 +60,31 @@
 
 // oto_setNotificationHandler sets a handler for interruption events.
 // Without the handler, Siri would stop the audio (#80).
-void oto_setNotificationHandler(AudioQueueRef audioQueue) {
+void oto_setNotificationHandler() {
   AVAudioSession* session = [AVAudioSession sharedInstance];
-  OtoInterruptObserver* observer = [[OtoInterruptObserver alloc] init];
-  [[NSNotificationCenter defaultCenter] addObserver: observer
-                                           selector: @selector(onAudioSessionEvent:)
-                                               name: AVAudioSessionInterruptionNotification
-                                             object: session];
+  OtoNotificationObserver *observer = [[OtoNotificationObserver alloc] init];
+  [[NSNotificationCenter defaultCenter]
+      addObserver:observer
+         selector:@selector(onAudioSessionInterruption:)
+             name:AVAudioSessionInterruptionNotification
+           object:session];
+
+  // The notifications UIApplicationDidEnterBackgroundNotification and
+  // UIApplicationWillEnterForegroundNotification were not reliable: at least,
+  // they were not notified at iPod touch A2178.
+  //
+  // Instead, check the background state via UIApplication actively.
+}
+
+bool oto_isBackground(void) {
+  if ([NSThread isMainThread]) {
+    return [[UIApplication sharedApplication] applicationState] ==
+           UIApplicationStateBackground;
+  }
+
+  __block bool background = false;
+  dispatch_sync(dispatch_get_main_queue(), ^{
+    background = oto_isBackground();
+  });
+  return background;
 }

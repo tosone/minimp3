@@ -3,7 +3,6 @@
 // license that can be found in the LICENSE file.
 
 // +build darwin
-// +build 386 amd64
 // +build !ios
 
 #include "_cgo_export.h"
@@ -34,7 +33,6 @@ enum
 void makeCurrentContext(uintptr_t context) {
 	NSOpenGLContext* ctx = (NSOpenGLContext*)context;
 	[ctx makeCurrentContext];
-	[ctx update];
 }
 
 void flushContext(uintptr_t context) {
@@ -57,10 +55,16 @@ uint64 threadID() {
 
 @implementation ScreenGLView
 - (void)prepareOpenGL {
+	[super prepareOpenGL];
+
 	[self setWantsBestResolutionOpenGLSurface:YES];
 	GLint swapInt = 1;
 	NSOpenGLContext *ctx = [self openGLContext];
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 	[ctx setValues:&swapInt forParameter:NSOpenGLCPSwapInterval];
+#pragma clang diagnostic pop
 
 	// Using attribute arrays in OpenGL 3.3 requires the use of a VBA.
 	// But VBAs don't exist in ES 2. So we bind a default one.
