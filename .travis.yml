@@ -2,10 +2,11 @@ language: go
 go:
   - 1.14.x
   - 1.15.x
+  - 1.16.x
 before_install:
   - sudo apt update
   - sudo apt install libasound2 libasound2-dev
-  - go get github.com/hajimehoshi/oto
   - go get github.com/mattn/goveralls
+  - go clean -modcache
 script:
-  - $GOPATH/bin/goveralls -service=travis-ci -package=github.com/tosone/minimp3
+  - $GOPATH/bin/goveralls -service=travis-ci
