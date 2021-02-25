@@ -1,0 +1,30 @@
+name: Builder
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  builder:
+    name: builder
+    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        go: ["1.16", "1.15"]
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup golang
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Tests
+        run: |
+          make test
+          make coverage

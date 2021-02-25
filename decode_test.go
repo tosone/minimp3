@@ -15,7 +15,7 @@ func TestDecoder(t *testing.T) {
 	var file, pcmFile *os.File
 	var dec *Decoder
 
-	if file, err = os.Open("./example/test.mp3"); err != nil {
+	if file, err = os.Open("./test.mp3"); err != nil {
 		t.Error(err)
 	}
 	if dec, err = NewDecoder(file); err != nil {
@@ -66,7 +66,7 @@ func TestDecodeFull(t *testing.T) {
 	var dec *Decoder
 	var data, file []byte
 
-	if file, err = ioutil.ReadFile("./example/test.mp3"); err != nil {
+	if file, err = ioutil.ReadFile("./test.mp3"); err != nil {
 		t.Error(err)
 	}
 
@@ -85,7 +85,7 @@ func TestDecoder_CloseEarly1(t *testing.T) {
 	var file *os.File
 	var dec *Decoder
 
-	if file, err = os.Open("./example/test.mp3"); err != nil {
+	if file, err = os.Open("./test.mp3"); err != nil {
 		t.Error(err)
 	}
 	if dec, err = NewDecoder(file); err != nil {
@@ -104,7 +104,7 @@ func TestDecoder_CloseEarly2(t *testing.T) {
 	var file, pcmFile *os.File
 	var dec *Decoder
 
-	if file, err = os.Open("./example/test.mp3"); err != nil {
+	if file, err = os.Open("./test.mp3"); err != nil {
 		t.Error(err)
 	}
 	if dec, err = NewDecoder(file); err != nil {
