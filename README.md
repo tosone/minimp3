@@ -2,7 +2,7 @@
 
 Decode mp3 base on <https://github.com/lieff/minimp3>
 
-[![Build Status](https://travis-ci.org/tosone/minimp3.svg?branch=master)](https://travis-ci.org/tosone/minimp3) [![Go Reference](https://pkg.go.dev/badge/github.com/tosone/minimp3.svg)](https://pkg.go.dev/github.com/tosone/minimp3)
+[![Builder](https://github.com/tosone/minimp3/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/tosone/minimp3/actions/workflows/ci.yaml) [![Go Reference](https://pkg.go.dev/badge/github.com/tosone/minimp3.svg)](https://pkg.go.dev/github.com/tosone/minimp3)
 
 ## Examples are here
 
