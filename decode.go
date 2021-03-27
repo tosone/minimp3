@@ -65,7 +65,7 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 		for {
 			select {
 			case <-dec.context.Done():
-				break
+				return
 			default:
 			}
 			if len(dec.data) > BufferSize {
@@ -91,7 +91,7 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 		for {
 			select {
 			case <-dec.context.Done():
-				break
+				return
 			default:
 			}
 			if len(dec.decodedData) > BufferSize {
