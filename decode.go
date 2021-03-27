@@ -120,7 +120,7 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 			dec.readerLocker.Lock()
 			dec.decoderLocker.Lock()
 			dec.decodedData = append(dec.decodedData, decoded[:decodedLength]...)
-			if int(frameSize) < len(dec.data) {
+			if int(frameSize) <= len(dec.data) {
 				dec.data = dec.data[int(frameSize):]
 			}
 			dec.decoderLocker.Unlock()
