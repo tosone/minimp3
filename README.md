@@ -1,8 +1,22 @@
 # minimp3
 
+[![Builder](https://github.com/tosone/minimp3/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/tosone/minimp3/actions/workflows/ci.yaml) [![Go Reference](https://pkg.go.dev/badge/github.com/tosone/minimp3.svg)](https://pkg.go.dev/github.com/tosone/minimp3)
+
 Decode mp3 base on <https://github.com/lieff/minimp3>
 
-[![Builder](https://github.com/tosone/minimp3/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/tosone/minimp3/actions/workflows/ci.yaml) [![Go Reference](https://pkg.go.dev/badge/github.com/tosone/minimp3.svg)](https://pkg.go.dev/github.com/tosone/minimp3)
+## Installation
+
+1. The first need Go installed (version 1.15+ is required), then you can use the below Go command to install minimp3.
+
+``` bash
+$ go get -u github.com/gin-gonic/gin
+```
+
+2. Import it in your code:
+
+``` bash
+import "github.com/gin-gonic/gin"
+```
 
 ## Examples are here
 
