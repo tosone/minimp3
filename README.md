@@ -1,6 +1,6 @@
 # minimp3
 
-[![Builder](https://github.com/tosone/minimp3/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/tosone/minimp3/actions/workflows/ci.yaml) [![Go Reference](https://pkg.go.dev/badge/github.com/tosone/minimp3.svg)](https://pkg.go.dev/github.com/tosone/minimp3)
+[![Go Reference](https://pkg.go.dev/badge/github.com/tosone/minimp3.svg)](https://pkg.go.dev/github.com/tosone/minimp3) [![Builder](https://github.com/tosone/minimp3/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/tosone/minimp3/actions/workflows/ci.yaml) [![codecov](https://codecov.io/gh/tosone/minimp3/branch/main/graph/badge.svg?token=LUIF0jZw6E)](https://codecov.io/gh/tosone/minimp3)
 
 Decode mp3 base on <https://github.com/lieff/minimp3>
 
