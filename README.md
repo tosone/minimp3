@@ -9,13 +9,13 @@ Decode mp3 base on <https://github.com/lieff/minimp3>
 1. The first need Go installed (version 1.15+ is required), then you can use the below Go command to install minimp3.
 
 ``` bash
-$ go get -u github.com/gin-gonic/gin
+$ go get -u github.com/tosone/minimp3
 ```
 
 2. Import it in your code:
 
 ``` bash
-import "github.com/gin-gonic/gin"
+import "github.com/tosone/minimp3"
 ```
 
 ## Examples are here
