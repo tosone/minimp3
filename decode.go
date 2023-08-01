@@ -44,6 +44,8 @@ type Decoder struct {
 	Channels      int
 	Kbps          int
 	Layer         int
+
+	originalEof bool // if the original reader is EOF, set this to true
 }
 
 // BufferSize Decoded data buffer size.
@@ -80,9 +82,11 @@ func NewDecoder(reader io.Reader) (dec *Decoder, err error) {
 			dec.data = append(dec.data, data[:n]...)
 			dec.readerLocker.Unlock()
 			if err == io.EOF {
+				dec.originalEof = true
 				break
 			}
 			if err != nil {
+				dec.originalEof = true
 				break
 			}
 		}
@@ -152,12 +156,23 @@ func (dec *Decoder) Started() (channel chan bool) {
 
 // Read read the raw stream
 func (dec *Decoder) Read(data []byte) (n int, err error) {
+	for {
+		select {
+		case <-dec.context.Done(): // if the decoder is stopped, then here should return EOF
+			err = io.EOF
+			return
+		default:
+		}
+		if len(dec.data) == 0 && len(dec.decodedData) == 0 && dec.originalEof {
+			err = io.EOF
+			return
+		} else if len(dec.decodedData) > 0 {
+			break
+		}
+		<-time.After(WaitForDataDuration)
+	}
 	dec.decoderLocker.Lock()
 	defer dec.decoderLocker.Unlock()
-	if len(dec.decodedData) == 0 {
-		err = io.EOF
-		return
-	}
 	n = copy(data, dec.decodedData[:])
 	dec.decodedData = dec.decodedData[n:]
 	return
