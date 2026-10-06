@@ -191,7 +191,7 @@ static int have_simd()
 #define HAVE_SIMD 0
 #endif /* !defined(MINIMP3_NO_SIMD) */
 
-#if defined(__ARM_ARCH) && (__ARM_ARCH >= 6) && !defined(__aarch64__) && !defined(_M_ARM64)
+#if defined(__ARM_ARCH) && (__ARM_ARCH >= 6) && !defined(__aarch64__) && !defined(_M_ARM64) && !defined(__ARM_ARCH_6M__)
 #define HAVE_ARMV6 1
 static __inline__ __attribute__((always_inline)) int32_t minimp3_clip_int16_arm(int32_t a)
 {
@@ -881,12 +881,22 @@ static void L3_midside_stereo(float *left, int n)
     int i = 0;
     float *right = left + 576;
 #if HAVE_SIMD
-    if (have_simd()) for (; i < n - 3; i += 4)
+    if (have_simd())
     {
-        f4 vl = VLD(left + i);
-        f4 vr = VLD(right + i);
-        VSTORE(left + i, VADD(vl, vr));
-        VSTORE(right + i, VSUB(vl, vr));
+        for (; i < n - 3; i += 4)
+        {
+            f4 vl = VLD(left + i);
+            f4 vr = VLD(right + i);
+            VSTORE(left + i, VADD(vl, vr));
+            VSTORE(right + i, VSUB(vl, vr));
+        }
+#ifdef __GNUC__
+        /* Workaround for spurious -Waggressive-loop-optimizations warning from gcc.
+         * For more info see: https://github.com/lieff/minimp3/issues/88
+         */
+        if (__builtin_constant_p(n % 4 == 0) && n % 4 == 0)
+            return;
+#endif
     }
 #endif /* HAVE_SIMD */
     for (; i < n; i++)

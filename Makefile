@@ -1,5 +1,5 @@
 test: clean
-	go test
+	go test -race ./...
 
 benchmark:
 	go test -bench=.
